@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power the State: Energy Portfolio Calculator</title>
+<style>
+  :root {
+    --navy: #0D2137;
+    --navy-light: #16324D;
+    --teal: #0B7A75;
+    --teal-light: #E4F3F1;
+    --gold: #F4A825;
+    --gold-light: #FDF1DC;
+    --gray-bg: #F4F5F7;
+    --card: #FFFFFF;
+    --text: #1B2430;
+    --text-muted: #5C6B7A;
+    --border: #E1E5EA;
+    --danger: #C0392B;
+    --danger-light: #FBEAE8;
+    --ok: #1E7A4C;
+    --ok-light: #E8F5EE;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--gray-bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3 {
+    font-family: Georgia, Cambria, "Times New Roman", serif;
+    color: var(--navy);
+    margin: 0;
+  }
+
+  a { color: var(--teal); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 1px;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 2rem 1.5rem 2.2rem;
+  }
+  header .inner {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  header h1 {
+    color: #fff;
+    font-size: clamp(1.7rem, 3vw, 2.4rem);
+    font-weight: 700;
+  }
+  header p.tagline {
+    margin-top: 0.4rem;
+    color: #B9C6D4;
+    font-size: 1.05rem;
+    max-width: 640px;
+  }
+
+  main {
+    max-width: 1180px;
+    margin: -1.2rem auto 3rem;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 920px) {
+    main { grid-template-columns: 1fr; margin-top: -0.8rem; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(13,33,55,0.06);
+    padding: 1.4rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card h2 {
+    font-size: 1.35rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .card h2 .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    background: var(--teal);
+    color: #fff;
+    font-size: 0.95rem;
+    font-family: -apple-system, sans-serif;
+    margin-right: 0.6rem;
+    vertical-align: middle;
+  }
+
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+  }
+
+  select, input[type="number"] {
+    width: 100%;
+    padding: 0.55rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 0.95rem;
+    background: #fff;
+    color: var(--text);
+  }
+
+  /* ---------- Scenario section ---------- */
+  #scenario-desc {
+    margin-top: 0.9rem;
+    background: var(--teal-light);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    color: var(--navy);
+    font-size: 0.98rem;
+    display: none;
+  }
+  #scenario-desc.visible { display: block; }
+
+  /* ---------- Portfolio table ---------- */
+  .table-wrap {
+    overflow-x: auto;
+  }
+  table.portfolio {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 640px;
+  }
+  table.portfolio th {
+    text-align: left;
+    font-size: 0.78rem;
+    text-transform: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 2px solid var(--border);
+  }
+  table.portfolio td {
+    padding: 0.5rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  table.portfolio td.resource-cell {
+    min-width: 190px;
+  }
+  table.portfolio td.pct-cell { width: 90px; }
+  table.portfolio td.score-cell { width: 82px; }
+
+  .resource-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .badge {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    color: #fff;
+  }
+  .badge.renewable { background: var(--teal); }
+  .badge.nonrenewable { background: var(--navy); }
+  .badge.empty { background: var(--border); }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.15rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+  }
+  .remove-btn:hover { background: var(--danger-light); color: var(--danger); }
+
+  #add-row-btn {
+    margin-top: 0.9rem;
+    background: var(--teal-light);
+    color: var(--teal);
+    border: 1px solid var(--teal);
+    padding: 0.55rem 1rem;
+    border-radius: 7px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  #add-row-btn:hover { background: var(--teal); color: #fff; }
+
+  .pct-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+  }
+  .pct-total-row .value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-family: Georgia, serif;
+  }
+
+  /* ---------- Rules checklist ---------- */
+  .rules-list {
+    list-style: none;
+    margin: 0.9rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .rules-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-size: 0.92rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 7px;
+  }
+  .rules-list li.pass { background: var(--ok-light); color: var(--ok); }
+  .rules-list li.fail { background: var(--danger-light); color: var(--danger); }
+  .rules-list li .icon { font-weight: 800; flex-shrink: 0; }
+
+  /* ---------- Results sidebar ---------- */
+  .sidebar-sticky {
+    position: sticky;
+    top: 1.2rem;
+  }
+  .factor-result {
+    margin-bottom: 1.1rem;
+  }
+  .factor-result .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    margin-bottom: 0.3rem;
+  }
+  .factor-result .row .fname { font-weight: 600; color: var(--navy); }
+  .factor-result .row .fscore { font-family: Georgia, serif; font-weight: 700; color: var(--teal); }
+  .bar-track {
+    height: 9px;
+    background: var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--teal);
+    border-radius: 5px;
+    transition: width 0.35s ease;
+  }
+
+  .overall-total {
+    text-align: center;
+    padding: 1rem 0 0.3rem;
+    border-top: 1px solid var(--border);
+    margin-top: 0.6rem;
+  }
+  .overall-total .num {
+    font-family: Georgia, serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+  }
+  .overall-total .lbl {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+  }
+
+  #reset-btn {
+    width: 100%;
+    margin-top: 1rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.5rem;
+    border-radius: 7px;
+    font-size: 0.85rem;
+  }
+  #reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ---------- Reference section ---------- */
+  .ref-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--navy);
+    font-weight: 600;
+    padding: 0.6rem 0.9rem;
+    border-radius: 7px;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ref-toggle:hover { background: var(--gray-bg); }
+
+  #reference-panel { display: none; margin-top: 1.2rem; }
+  #reference-panel.open { display: block; }
+
+  .resource-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+  }
+  .resource-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem;
+  }
+  .resource-card .head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.55rem;
+  }
+  .resource-card h3 { font-size: 1rem; }
+  .resource-card .tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.12rem 0.5rem;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  .tag.renewable { background: var(--teal-light); color: var(--teal); }
+  .tag.nonrenewable { background: var(--gold-light); color: #9a6407; }
+  .resource-card ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.86rem;
+  }
+  .resource-card ul.pros li { color: var(--ok); }
+  .resource-card ul.cons li { color: var(--danger); }
+  .resource-card ul li span { color: var(--text); }
+  .resource-card .list-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin: 0.5rem 0 0.15rem;
+  }
+
+  table.rubric-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.82rem;
+  }
+  table.rubric-table th, table.rubric-table td {
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.rubric-table th {
+    background: var(--navy);
+    color: #fff;
+    font-weight: 600;
+  }
+  table.rubric-table td.factor-name {
+    font-weight: 700;
+    color: var(--navy);
+    background: var(--gray-bg);
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    padding: 0 1.5rem 2.5rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <h1>Power the State</h1>
+    <p class="tagline">Energy Portfolio Calculator — build your team's energy mix, score it against the handout's four decision factors, and let the math do the weighting.</p>
+  </div>
+</header>
+
+<main>
+  <div class="main-col">
+
+    <div class="card">
+      <h2><span class="step-num">1</span>Your scenario</h2>
+      <label for="scenario-select">Choose the scenario your team was assigned</label>
+      <select id="scenario-select">
+        <option value="">— Select a scenario —</option>
+      </select>
+      <div id="scenario-desc"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step-num">2</span>Build your portfolio</h2>
+      <p style="color:var(--text-muted); font-size:0.92rem; margin-top:-0.4rem;">Add each resource in your mix, its % share, and a score (1–5) on each factor. Need the rubric while you score? Open the reference panel below.</p>
+
+      <div class="table-wrap">
+        <table class="portfolio" id="portfolio-table">
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>% of mix</th>
+              <th>Availability</th>
+              <th>Economic</th>
+              <th>Environmental</th>
+              <th>Socio-Political</th>
+              <th class="sr-only">Remove</th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-body"></tbody>
+        </table>
+      </div>
+
+      <button id="add-row-btn" type="button">+ Add a resource</button>
+
+      <div class="pct-total-row">
+        <span style="color:var(--text-muted); font-size:0.9rem;">Total portfolio share</span>
+        <span class="value" id="pct-total-value">0%</span>
+      </div>
+
+      <ul class="rules-list" id="rules-list"></ul>
+    </div>
+
+    <div class="card">
+      <button class="ref-toggle" id="ref-toggle-btn" type="button" aria-expanded="false">Open resource &amp; rubric reference</button>
+      <div id="reference-panel">
+        <h2 style="margin-top:1rem;">Resource reference</h2>
+        <div class="resource-grid" id="resource-grid"></div>
+
+        <h2 style="margin-top:1.6rem;">Scoring rubric</h2>
+        <p style="color:var(--text-muted); font-size:0.9rem; margin:0.4rem 0 0;">What each score (1–5) means for a single resource on each factor.</p>
+        <div style="overflow-x:auto;">
+          <table class="rubric-table" id="rubric-table"></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sidebar-col">
+    <div class="card sidebar-sticky">
+      <h2><span class="step-num">3</span>Your score</h2>
+      <div id="factor-results"></div>
+      <div class="overall-total">
+        <div class="num" id="overall-total-num">0.0</div>
+        <div class="lbl">Overall Portfolio Score (out of 20)</div>
+      </div>
+      <button id="reset-btn" type="button">Reset portfolio</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built from the Energy Resources handout &middot; Power the State: Energy Portfolio Challenge
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var RESOURCES = [
+    { id: "gas", name: "Natural Gas", renewable: false, icon: "🔥",
+      pros: ["Fewer harmful emissions than gasoline or diesel", "Domestically and commercially available", "Can support a transition to fuel cell technology"],
+      cons: ["Unsustainable long-term", "Risk and degradation from extraction and transport", "Most accessible reserves already exhausted"] },
+    { id: "coal", name: "\u201cClean\u201d Coal", renewable: false, icon: "🏭",
+      pros: ["Cheap and abundant in the U.S.", "Infrastructure already in place", "Generates about half of U.S. power supply"],
+      cons: ["Extraction is still dirty and dangerous", "Strip-mining and mountain-top removal", "Trace emissions and CO\u2082 storage costs remain"] },
+    { id: "petroleum", name: "Petroleum", renewable: false, icon: "⛽",
+      pros: ["Infrastructure already in place", "Used to make plastics, lubricants, and more", "Existing supplies still remain"],
+      cons: ["Extraction can be complex and risky", "Oil spills and run-off", "Less than 3% of domestic reserves globally"] },
+    { id: "nuclear", name: "Nuclear", renewable: false, icon: "☢️",
+      pros: ["Free of atmospheric pollution", "Generates more power per weight than coal", "Safe for workers under normal operation"],
+      cons: ["Potential for catastrophic accidents", "Safe waste disposal is difficult", "Expensive; weapons-proliferation risk"] },
+    { id: "wind", name: "Wind", renewable: true, icon: "🌬️",
+      pros: ["High efficiency, cheap electricity", "Low environmental impact, no CO\u2082", "Easy to build, expand, or site offshore"],
+      cons: ["Needs steady winds", "Needs a backup power system", "Can affect bird and bat populations"] },
+    { id: "solar", name: "Solar", renewable: true, icon: "☀️",
+      pros: ["No fuel and no emissions", "Little maintenance required", "Can sell power back to the grid"],
+      cons: ["Needs a sunny location", "Expensive up-front cost", "Manufacturing has pollutant byproducts"] },
+    { id: "geothermal", name: "Geothermal", renewable: true, icon: "♨️",
+      pros: ["Renewable with reduced emissions", "Works for heating, cooling, or electricity", "New tech may widen availability"],
+      cons: ["Not always sustainable long-term", "Corrosive water raises maintenance", "Limited to where it's geologically accessible"] },
+    { id: "biofuels", name: "Biofuels", renewable: true, icon: "🌱",
+      pros: ["Reduced emission pollution", "Can recycle waste and byproducts", "Can support rural economies locally"],
+      cons: ["Uses food resources, raising food costs", "Monoculture risks: erosion, desertification", "Requires energy inputs to produce"] }
+  ];
+
+  var SCENARIOS = [
+    { id: 1, name: "Coastal Storm Belt", desc: "A coastal state gets frequent hurricanes, has a booming beach-tourism economy, and relies on visitors seeing clean beaches and clear water." },
+    { id: 2, name: "Sunny & Empty", desc: "A landlocked western state has huge open land, very little rain, and a small population spread far apart." },
+    { id: 3, name: "Steel Town Comeback", desc: "A former industrial region already has coal plants and pipelines built, but younger residents want cleaner jobs and cleaner air." },
+    { id: 4, name: "Island Nation", desc: "A small island nation has no oil, gas, or coal reserves of its own and must import fuel by ship at high cost." },
+    { id: 5, name: "Farming Valley", desc: "An agricultural region has lots of crop waste, manure, and unused farmland, but limited electricity infrastructure." },
+    { id: 6, name: "Mountain Border Town", desc: "A small mountain town sits near a known geothermal hot spring but is far from any coastline or major power grid." },
+    { id: 7, name: "Growing Suburb", desc: "A fast-growing suburb needs a lot more power soon, has moderate sun and wind, and residents are sensitive about property values and noise." },
+    { id: 8, name: "Desert Military Base", desc: "A remote desert region hosts a large military base that needs a reliable power supply that can't fail, even during shortages." },
+    { id: 9, name: "River Valley Rustbelt", desc: "A river valley region has existing hydro-adjacent infrastructure, an aging population, and a tight municipal budget." },
+    { id: 10, name: "National Capital Region", desc: "A densely populated capital region faces intense public and political scrutiny over any new energy project, plus strict emissions targets." }
+  ];
+
+  var FACTORS = [
+    { key: "avail", name: "Availability",
+      levels: [
+        "Resource is essentially absent or inaccessible for this region.",
+        "Resource exists but is very limited or hard to access.",
+        "Resource is available but not abundant; some limitation noted on the handout.",
+        "Resource is fairly available with minor limitations.",
+        "Resource is abundant and well-suited to this region, per the handout."
+      ] },
+    { key: "econ", name: "Economic Viability",
+      levels: [
+        "Cost is prohibitive; no infrastructure or incentive exists.",
+        "High upfront cost or weak incentive outweighs benefits.",
+        "Costs and benefits are roughly balanced.",
+        "Reasonably cost-effective; some infrastructure or incentive helps.",
+        "Cheap, infrastructure is in place, and/or strong economic upside."
+      ] },
+    { key: "env", name: "Environmental Impact",
+      levels: [
+        "Handout lists serious, largely unavoidable environmental harm.",
+        "Notable environmental cons outweigh the pros.",
+        "Mixed impact; pros and cons are roughly equal.",
+        "Mostly low-impact with minor drawbacks noted.",
+        "Low environmental impact; handout lists this as a clear strength."
+      ] },
+    { key: "socio", name: "Socio-Political Impact",
+      levels: [
+        "Resource is likely to face strong public or political opposition.",
+        "Significant socio-political concerns (safety, land use, jobs, etc.).",
+        "Some socio-political tension, but manageable.",
+        "Generally accepted, minor concerns only.",
+        "Broadly supported; creates jobs, local benefit, or public goodwill."
+      ] }
+  ];
+
+  var rows = []; // { rowId, resourceId, pct, avail, econ, env, socio }
+  var rowCounter = 0;
+
+  function resourceById(id) {
+    for (var i = 0; i < RESOURCES.length; i++) if (RESOURCES[i].id === id) return RESOURCES[i];
+    return null;
+  }
+
+  // ---------- Populate scenario select ----------
+  var scenarioSelect = document.getElementById("scenario-select");
+  SCENARIOS.forEach(function (s) {
+    var opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.id + ". " + s.name;
+    scenarioSelect.appendChild(opt);
+  });
+  scenarioSelect.addEventListener("change", function () {
+    var descEl = document.getElementById("scenario-desc");
+    var s = SCENARIOS.find(function (x) { return String(x.id) === scenarioSelect.value; });
+    if (s) {
+      descEl.textContent = s.desc;
+      descEl.classList.add("visible");
+    } else {
+      descEl.classList.remove("visible");
+    }
+  });
+
+  // ---------- Row rendering ----------
+  var tbody = document.getElementById("portfolio-body");
+
+  function addRow() {
+    rowCounter++;
+    rows.push({ rowId: rowCounter, resourceId: "", pct: "", avail: "", econ: "", env: "", socio: "" });
+    renderTable();
+  }
+
+  function removeRow(rowId) {
+    rows = rows.filter(function (r) { return r.rowId !== rowId; });
+    renderTable();
+  }
+
+  function renderTable() {
+    tbody.innerHTML = "";
+    rows.forEach(function (row) {
+      var tr = document.createElement("tr");
+
+      // Resource cell
+      var tdRes = document.createElement("td");
+      tdRes.className = "resource-cell";
+      var wrap = document.createElement("div");
+      wrap.className = "resource-select-wrap";
+      var badge = document.createElement("div");
+      var res = resourceById(row.resourceId);
+      badge.className = "badge " + (res ? (res.renewable ? "renewable" : "nonrenewable") : "empty");
+      badge.textContent = res ? res.icon : "?";
+      var sel = document.createElement("select");
+      sel.setAttribute("aria-label", "Resource");
+      var optBlank = document.createElement("option");
+      optBlank.value = "";
+      optBlank.textContent = "\u2014 Choose \u2014";
+      sel.appendChild(optBlank);
+      var groupRenew = document.createElement("optgroup");
+      groupRenew.label = "Renewable";
+      var groupNon = document.createElement("optgroup");
+      groupNon.label = "Non-renewable";
+      RESOURCES.forEach(function (r) {
+        var o = document.createElement("option");
+        o.value = r.id;
+        o.textContent = r.name;
+        if (r.id === row.resourceId) o.selected = true;
+        (r.renewable ? groupRenew : groupNon).appendChild(o);
+      });
+      sel.appendChild(groupRenew);
+      sel.appendChild(groupNon);
+      sel.addEventListener("change", function () {
+        row.resourceId = sel.value;
+        renderTable();
+        recalc();
+      });
+      wrap.appendChild(badge);
+      wrap.appendChild(sel);
+      tdRes.appendChild(wrap);
+      tr.appendChild(tdRes);
+
+      // % cell
+      var tdPct = document.createElement("td");
+      tdPct.className = "pct-cell";
+      var pctInput = document.createElement("input");
+      pctInput.type = "number";
+      pctInput.min = "0";
+      pctInput.max = "100";
+      pctInput.step = "1";
+      pctInput.value = row.pct;
+      pctInput.setAttribute("aria-label", "Percent of mix");
+      pctInput.placeholder = "%";
+      pctInput.addEventListener("input", function () {
+        row.pct = pctInput.value;
+        recalc();
+      });
+      tdPct.appendChild(pctInput);
+      tr.appendChild(tdPct);
+
+      // Score cells
+      ["avail", "econ", "env", "socio"].forEach(function (key) {
+        var td = document.createElement("td");
+        td.className = "score-cell";
+        var scoreSel = document.createElement("select");
+        scoreSel.setAttribute("aria-label", key + " score");
+        var blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "\u2013";
+        scoreSel.appendChild(blank);
+        for (var v = 1; v <= 5; v++) {
+          var o2 = document.createElement("option");
+          o2.value = v;
+          o2.textContent = v;
+          if (String(row[key]) === String(v)) o2.selected = true;
+          scoreSel.appendChild(o2);
+        }
+        scoreSel.addEventListener("change", function () {
+          row[key] = scoreSel.value;
+          recalc();
+        });
+        td.appendChild(scoreSel);
+        tr.appendChild(td);
+      });
+
+      // Remove cell
+      var tdRemove = document.createElement("td");
+      var removeBtn = document.createElement("button");
+      removeBtn.className = "remove-btn";
+      removeBtn.type = "button";
+      removeBtn.innerHTML = "\u00d7";
+      removeBtn.setAttribute("aria-label", "Remove resource row");
+      removeBtn.addEventListener("click", function () { removeRow(row.rowId); recalc(); });
+      tdRemove.appendChild(removeBtn);
+      tr.appendChild(tdRemove);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- Calculation ----------
+  var rulesList = document.getElementById("rules-list");
+  var pctTotalValue = document.getElementById("pct-total-value");
+  var factorResultsEl = document.getElementById("factor-results");
+  var overallTotalNum = document.getElementById("overall-total-num");
+
+  function recalc() {
+    var totalPct = 0;
+    var maxPct = 0;
+    var hasRenewable = false;
+    var hasNonrenewable = false;
+    var weighted = { avail: 0, econ: 0, env: 0, socio: 0 };
+
+    rows.forEach(function (row) {
+      var pct = parseFloat(row.pct);
+      if (isNaN(pct)) pct = 0;
+      totalPct += pct;
+      if (pct > maxPct) maxPct = pct;
+
+      var res = resourceById(row.resourceId);
+      if (res) {
+        if (res.renewable) hasRenewable = true; else hasNonrenewable = true;
+      }
+
+      ["avail", "econ", "env", "socio"].forEach(function (key) {
+        var score = parseFloat(row[key]);
+        if (!isNaN(score) && !isNaN(pct)) {
+          weighted[key] += score * (pct / 100);
+        }
+      });
+    });
+
+    pctTotalValue.textContent = Math.round(totalPct * 10) / 10 + "%";
+    pctTotalValue.style.color = Math.round(totalPct) === 100 ? "var(--ok)" : "var(--danger)";
+
+    // Rules checklist
+    var rules = [
+      { pass: Math.round(totalPct) === 100 && rows.length > 0, text: "Resources add up to 100% of the mix." },
+      { pass: rows.length > 0 && maxPct <= 50 && maxPct > 0, text: "No single resource is over 50% of the mix." },
+      { pass: hasRenewable && hasNonrenewable, text: "Includes at least one renewable AND one non-renewable resource." }
+    ];
+    rulesList.innerHTML = "";
+    rules.forEach(function (r) {
+      var li = document.createElement("li");
+      li.className = r.pass ? "pass" : "fail";
+      li.innerHTML = "<span class=\"icon\">" + (r.pass ? "\u2713" : "\u2717") + "</span><span>" + r.text + "</span>";
+      rulesList.appendChild(li);
+    });
+
+    // Factor results
+    factorResultsEl.innerHTML = "";
+    var overall = 0;
+    FACTORS.forEach(function (f) {
+      var val = weighted[f.key] || 0;
+      overall += val;
+      var div = document.createElement("div");
+      div.className = "factor-result";
+      var pctWidth = Math.min(100, (val / 5) * 100);
+      div.innerHTML =
+        "<div class=\"row\"><span class=\"fname\">" + f.name + "</span><span class=\"fscore\">" + val.toFixed(2) + "</span></div>" +
+        "<div class=\"bar-track\"><div class=\"bar-fill\" style=\"width:" + pctWidth + "%\"></div></div>";
+      factorResultsEl.appendChild(div);
+    });
+    overallTotalNum.textContent = overall.toFixed(2);
+  }
+
+  document.getElementById("add-row-btn").addEventListener("click", addRow);
+  document.getElementById("reset-btn").addEventListener("click", function () {
+    rows = [];
+    rowCounter = 0;
+    renderTable();
+    recalc();
+  });
+
+  // ---------- Reference panel ----------
+  var refToggleBtn = document.getElementById("ref-toggle-btn");
+  var refPanel = document.getElementById("reference-panel");
+  refToggleBtn.addEventListener("click", function () {
+    var isOpen = refPanel.classList.toggle("open");
+    refToggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    refToggleBtn.textContent = isOpen ? "Close resource & rubric reference" : "Open resource & rubric reference";
+  });
+
+  var resourceGrid = document.getElementById("resource-grid");
+  RESOURCES.forEach(function (r) {
+    var card = document.createElement("div");
+    card.className = "resource-card";
+    var prosHtml = r.pros.map(function (p) { return "<li>\u2713 <span>" + p + "</span></li>"; }).join("");
+    var consHtml = r.cons.map(function (c) { return "<li>\u2717 <span>" + c + "</span></li>"; }).join("");
+    card.innerHTML =
+      "<div class=\"head\"><span style=\"font-size:1.3rem;\">" + r.icon + "</span><h3>" + r.name + "</h3>" +
+      "<span class=\"tag " + (r.renewable ? "renewable" : "nonrenewable") + "\">" + (r.renewable ? "Renewable" : "Non-renewable") + "</span></div>" +
+      "<div class=\"list-label\">Pros</div><ul class=\"pros\">" + prosHtml + "</ul>" +
+      "<div class=\"list-label\">Cons</div><ul class=\"cons\">" + consHtml + "</ul>";
+    resourceGrid.appendChild(card);
+  });
+
+  var rubricTable = document.getElementById("rubric-table");
+  var headRow = "<tr><th>Factor</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>";
+  var bodyRows = FACTORS.map(function (f) {
+    return "<tr><td class=\"factor-name\">" + f.name + "</td>" +
+      f.levels.map(function (l) { return "<td>" + l + "</td>"; }).join("") +
+      "</tr>";
+  }).join("");
+  rubricTable.innerHTML = headRow + bodyRows;
+
+  // ---------- Init ----------
+  addRow();
+  addRow();
+  recalc();
+})();
+</script>
+
+</body>
+</html>
